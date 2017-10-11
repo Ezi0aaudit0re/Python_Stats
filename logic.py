@@ -20,7 +20,9 @@ import csv
 # this variable would store headings (the coloms of the csv file)
 headings = ()
 
-DEBUG = True
+# declared this as a global variable
+# in capital becuase value remains constant to differentiate
+DEBUG = False
 
 """
     This function loads the data from the csv file into the memory
@@ -37,9 +39,8 @@ def load_cencus_data(path="./file.csv"):
 
         global headings
         global DEBUG # this checks if DEBUG mode is turned on
+
         validated_rows = [] # list of validated rows
-        if DEBUG:
-            not_validated_rows = []
 
         # open the file to read 
         with open(path, "r") as file:
@@ -79,61 +80,162 @@ def load_cencus_data(path="./file.csv"):
 """
     This function gets an input from the user and validates it 
     If the user enters input incorrectly thrice it quits
-    :param: counter -> To check the number of times user has entered an input
     :param: input_for -> This is used to differentiate what the function is being called for 
-        1 -> basic user input 
+        1 -> user input for colum based on ennumeration
         2 -> user input for floor value 
-        3 -> User input for colum 
     :return: The integer value of the user input
 """
-def get_user_input(input_for, counter=0):
+def get_user_input(input_for):
     try:
         global DEBUG
         if input_for == 1:
-
-            if DEBUG:
-                print("In basic user input")
-
             global headings
             temp = enumerate(headings)
             for enum in temp:
-                print("{}) {}".format(enum[0], enum[1]))
-
-            helper.get_user_data(question="Please enter an integer based on one of the ennumeration EG 1 for Zip Code",
-                                 validate_func = validate_user_input,
+                print("{}) {}".format((enum[0] + 1), enum[1]))
+            
+            #helper function takes care of the checking
+            value = helper.get_user_data(question="Please enter an integer based on one of the ennumeration EG 1 for Zip Code: ",
+                                 validate_func = helper.validate_user_input,
                                  alert = "Please enter a valid number betweeen 1 and 7",
                                  counter = 0)
-            #user_in = input("Please enter an integer based on one of the ennumeration "
-            #                "eg 1 for Zip Code: ")
-            #if helper.validate_user_input(user_in):
-            #    return int(user_in)
-            #else:
-            #    # updates counter and calls function recursively  
-            #    counter += 1
-            #    helper.check_counter(counter)
-            #    print("Please enter a integer between 1 and 7")
-            #    get_user_input(1, counter)
+            # Just a design desion we dont ask the user to enter value from 0 
+            # but start from 1 and we adjust it here
+            value = value - 1
 
         elif input_for == 2:
-        # checks if we are asking for floor value
-            if DEBUG:
-                print("In floor value")
-
-            user_in = input("Please enter a postive value as floor value: ")
-
-            if helper.validate_floor_value(user_in):
-                return int(user_in)
-            else: 
-                # updates counter and calls the func recursively 
-                counter += 1
-                helper.check_counter(counter)
-                print("Please enter a valid floor value")
-                get_user_input(2, counter)
+            value = helper.get_user_data(question="Please enter a floor value: ",
+                                 validate_func = helper.validate_floor_value, 
+                                 alert="Please enter a valid floor value",
+                                 counter = 0)
+        return value
 
     except Exception as e:
+        print(str(e))
         print("An error occured please re-enter a valid value")
-        #get_user_input(1)
+        sys.exit(1)
 
 
-def filter_data_by_colum_and_floor(data, colum_value, floor_value):
-    pass
+"""
+    This function creates a new list from the data based on the colum and the floor_value
+    NOTE - This function removes the reduandant step of first returning the rows 
+           and then then filtering through the rows for the colum. 
+    This function straight away returns the colum and value tuple
+    filtered based on the users input
+    :param: data -> Validated tuple of data from csv file 
+    :param: colum_name -> The colum to filter data by 
+    :param: floor_value -> The value to check if value greater than or equal to 
+    :return: tuple of the new list created
+"""
+def filter_data_by_colum_and_floor(data, colum_name, floor_value):
+    try: 
+        # get the name of the heading based on the int value
+        global headings 
+        if len(headings) == 0:
+            load_cencus_data()
+
+        colum_name = helper.get_colum_name(headings, colum_name)
+
+        #loop through the validated data
+        filtered_data = []
+        for row in data:
+            for k,v in row.items():
+                if k == colum_name and row[colum_name] >= floor_value:
+                    filtered_data.append(row)
+
+        if len(filtered_data):
+            return tuple(filtered_data)    
+        else: 
+            return False 
+    except Exception as e:
+        print("A proble occured while running the program")
+        print(str(e))
+
+"""
+    This function gets the only colum required based on the colum entered by the user
+    :param: data -> The filtered data which has all the values in the dict
+    :param: colum_name -> The int value of the column to get 
+    :return: dictionary with the colum required
+"""
+def get_data_by_colum(data, colum_name):
+
+    try: 
+        # get the name of the heading based on the int value
+        global headings
+        if len(headings) == 0:
+            load_cencus_data()
+
+        colum_name = helper.get_colum_name(headings, colum_name)
+
+        filtered_list = []
+        for row in data:
+            for k, v in row.items():
+                if k == colum_name:
+                    filtered_list.append({k: v})
+
+        if len(filtered_list):
+            return tuple(filtered_list)
+        else:
+            return False
+
+    except Exception as e:
+        print("Problem in the get_data_by_colum function")
+        print(str(e))
+        
+
+
+"""
+    This function sorts the filtered data 
+    :param: data -> The data to sort
+    :param: colum_name -> the colum to solve by (int value)
+    :return: sorted data
+"""
+def sord_filtered_data(data, colum_name):
+    try:
+        global headings
+        if len(data):
+            # just make sure that the data recieved is not empty
+            colum_name = helper.get_colum_name(headings, colum_name)
+            return sorted(data, key=lambda x: x[colum_name]) 
+
+    except Exception as e:
+        print(str(e))
+
+
+"""
+    This is the function that deals with writing filtered, sorted data to a file
+    Saves the file in a folder called exports
+    Uses helper method get_file_name_and_make_path
+    :param: data -> The filtered and the sorted tuple of the dictionaries with a particular column.
+"""
+def write_to_csv(data):
+    try:
+        # we create a constant DIR capital letters just to differentiate that its value would not change
+        DIR = 'exports'
+        if os.path.isdir(DIR) is False:
+           os.mkdir(DIR)
+        path = os.path.join(os.getcwd(), DIR)
+
+        # get the file name and check if it doesnot already exists
+        fname = helper.get_file_name_and_make_path(path)
+        path = os.path.join(path, fname)
+
+        # get fieldname so that we donot have to hardcode it 
+        for key in data[0].keys():
+            fields = [key]
+
+        # open a file and WRITE to it 
+        with open(path, 'w') as file:
+            writer = csv.DictWriter(file, fieldnames=fields)            
+            writer.writeheader()
+
+            for row in data:
+                writer.writerow(row)
+        
+        #returns true after the program has finished
+        return True
+
+
+
+    except Exception as e:
+        print(str(e))
